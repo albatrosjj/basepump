@@ -2,39 +2,56 @@
 pragma solidity ^0.8.19;
 
 contract ScoreBoard {
+    struct Prediction {
+        uint256 priceAtPrediction;
+        bool direction; // true = up, false = down
+        uint256 timestamp;
+        bool resolved;
+    }
+
     mapping(address => uint256) public scores;
     mapping(address => uint256) public streaks;
     mapping(address => uint256) public totalGames;
-    mapping(address => uint256) public correctGuesses;
+    mapping(address => Prediction) public predictions;
 
-    event ScoreRecorded(address indexed player, uint256 points, uint256 newTotal, uint256 streak);
+    event PredictionMade(address indexed player, uint256 price, bool direction);
+    event PredictionResolved(address indexed player, bool won, uint256 points);
 
-    function recordWin(uint256 currentStreak) external {
-        uint256 points = 50 + (currentStreak * 10);
-        scores[msg.sender] += points;
-        streaks[msg.sender] = currentStreak + 1;
+    function makePrediction(uint256 price, bool direction) external {
+        predictions[msg.sender] = Prediction({
+            priceAtPrediction: price,
+            direction: direction,
+            timestamp: block.timestamp,
+            resolved: false
+        });
         totalGames[msg.sender]++;
-        correctGuesses[msg.sender]++;
-        emit ScoreRecorded(msg.sender, points, scores[msg.sender], streaks[msg.sender]);
+        emit PredictionMade(msg.sender, price, direction);
     }
 
-    function recordLoss() external {
-        streaks[msg.sender] = 0;
-        totalGames[msg.sender]++;
-        emit ScoreRecorded(msg.sender, 0, scores[msg.sender], 0);
+    function resolvePrediction(uint256 finalPrice) external {
+        Prediction storage p = predictions[msg.sender];
+        require(!p.resolved, "Already resolved");
+        require(p.timestamp > 0, "No prediction");
+
+        p.resolved = true;
+        bool won = p.direction ? finalPrice > p.priceAtPrediction : finalPrice < p.priceAtPrediction;
+
+        if (won) {
+            uint256 pts = 50 + (streaks[msg.sender] * 10);
+            scores[msg.sender] += pts;
+            streaks[msg.sender]++;
+            emit PredictionResolved(msg.sender, true, pts);
+        } else {
+            streaks[msg.sender] = 0;
+            emit PredictionResolved(msg.sender, false, 0);
+        }
     }
 
     function getPlayer(address player) external view returns (
         uint256 score,
         uint256 streak,
-        uint256 games,
-        uint256 correct
+        uint256 games
     ) {
-        return (
-            scores[player],
-            streaks[player],
-            totalGames[player],
-            correctGuesses[player]
-        );
+        return (scores[player], streaks[player], totalGames[player]);
     }
 }

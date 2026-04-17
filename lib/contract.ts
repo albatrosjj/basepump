@@ -1,17 +1,20 @@
-export const SCOREBOARD_ADDRESS = '0x4573CdA7ec24743366ceBB2d3aA851B202463fE6' as const
+export const SCOREBOARD_ADDRESS = '0xCE10A7E9cD982B86D25d14e31963012bDcf5A5a0' as const
 
 export const SCOREBOARD_ABI = [
   {
     type: 'function',
-    name: 'recordWin',
-    inputs: [{ name: 'currentStreak', type: 'uint256' }],
+    name: 'makePrediction',
+    inputs: [
+      { name: 'price', type: 'uint256' },
+      { name: 'direction', type: 'bool' },
+    ],
     outputs: [],
     stateMutability: 'nonpayable',
   },
   {
     type: 'function',
-    name: 'recordLoss',
-    inputs: [],
+    name: 'resolvePrediction',
+    inputs: [{ name: 'finalPrice', type: 'uint256' }],
     outputs: [],
     stateMutability: 'nonpayable',
   },
@@ -23,7 +26,6 @@ export const SCOREBOARD_ABI = [
       { name: 'score', type: 'uint256' },
       { name: 'streak', type: 'uint256' },
       { name: 'games', type: 'uint256' },
-      { name: 'correct', type: 'uint256' },
     ],
     stateMutability: 'view',
   },

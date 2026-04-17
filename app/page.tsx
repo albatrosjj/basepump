@@ -15,9 +15,10 @@ export default function Home() {
   const [prediction, setPrediction] = useState('')
   const [won, setWon] = useState(false)
   const [earned, setEarned] = useState(0)
+  const [countdown, setCountdown] = useState(5)
   const [priceAtPrediction, setPriceAtPrediction] = useState(0)
 
-  const { data: playerData } = useReadContract({
+  const { data: playerData, refetch } = useReadContract({
     address: SCOREBOARD_ADDRESS,
     abi: SCOREBOARD_ABI,
     functionName: 'getPlayer',
@@ -27,6 +28,7 @@ export default function Home() {
 
   const score = playerData ? Number(playerData[0]) : 0
   const streak = playerData ? Number(playerData[1]) : 0
+  const games = playerData ? Number(playerData[2]) : 0
 
   useEffect(() => {
     import('@farcaster/miniapp-sdk').then(({ sdk }) => {
@@ -50,36 +52,50 @@ export default function Home() {
       connect({ connector: farcasterFrame() })
       return
     }
+
+    const currentPrice = await fetchPrice()
+    setPrice(currentPrice)
+    setPriceAtPrediction(currentPrice)
     setPrediction(dir)
-    setPriceAtPrediction(price)
     setPhase('waiting')
+    setCountdown(5)
+
+    const priceWei = BigInt(Math.round(currentPrice * 100))
+
+    writeContract({
+      address: SCOREBOARD_ADDRESS,
+      abi: SCOREBOARD_ABI,
+      functionName: 'makePrediction',
+      args: [priceWei, dir === 'up'],
+    })
+
+    let c = 5
+    const timer = setInterval(() => {
+      c--
+      setCountdown(c)
+      if (c <= 0) clearInterval(timer)
+    }, 1000)
 
     setTimeout(async () => {
-      const newPrice = await fetchPrice()
-      setPrice(newPrice)
-      const w = dir === 'up' ? newPrice > priceAtPrediction : newPrice < priceAtPrediction
+      const finalPrice = await fetchPrice()
+      setPrice(finalPrice)
+      const finalPriceWei = BigInt(Math.round(finalPrice * 100))
+      const w = dir === 'up' ? finalPrice > currentPrice : finalPrice < currentPrice
+      const pts = w ? 50 + streak * 10 : 0
 
       setWon(w)
-      const pts = w ? 50 + streak * 10 : 0
       setEarned(pts)
 
-      if (w) {
-        writeContract({
-          address: SCOREBOARD_ADDRESS,
-          abi: SCOREBOARD_ABI,
-          functionName: 'recordWin',
-          args: [BigInt(streak)],
-        })
-      } else {
-        writeContract({
-          address: SCOREBOARD_ADDRESS,
-          abi: SCOREBOARD_ABI,
-          functionName: 'recordLoss',
-        })
-      }
+      writeContract({
+        address: SCOREBOARD_ADDRESS,
+        abi: SCOREBOARD_ABI,
+        functionName: 'resolvePrediction',
+        args: [finalPriceWei],
+      })
 
       setPhase('result')
-    }, 10000)
+      setTimeout(() => refetch(), 3000)
+    }, 5000)
   }
 
   function reset() {
@@ -100,6 +116,7 @@ export default function Home() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#00FF87' }} />
           <span style={{ fontSize: '12px', color: '#C4A0FF', fontFamily: 'monospace' }}>{short}</span>
+          <span style={{ fontSize: '11px', color: '#9B30FF', marginLeft: '4px' }}>· {games} games</span>
           <button onClick={() => disconnect()} style={{ fontSize: '11px', color: '#9B30FF', background: 'none', border: 'none', cursor: 'pointer' }}>disconnect</button>
         </div>
       ) : (
@@ -133,20 +150,20 @@ export default function Home() {
       {phase === 'play' && (
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '15px', color: '#C4A0FF', marginBottom: '16px' }}>
-            {isConnected ? 'Where will ETH be in 10 minutes?' : 'Connect wallet to play'}
+            {isConnected ? 'Where will ETH be in 5 seconds?' : 'Connect wallet to play'}
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => predict('up')} disabled={isPending} style={{ padding: '16px 28px', background: '#00FF87', border: '3px solid #00CC6A', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', color: '#003D1F', cursor: 'pointer' }}>↑ Higher</button>
-            <button onClick={() => predict('down')} disabled={isPending} style={{ padding: '16px 28px', background: '#FF3CAC', border: '3px solid #CC0080', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', color: '#3D0020', cursor: 'pointer' }}>↓ Lower</button>
+            <button onClick={() => predict('up')} disabled={isPending} style={{ padding: '16px 28px', background: '#00FF87', border: '3px solid #00CC6A', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', color: '#003D1F', cursor: 'pointer', opacity: isPending ? 0.5 : 1 }}>↑ Higher</button>
+            <button onClick={() => predict('down')} disabled={isPending} style={{ padding: '16px 28px', background: '#FF3CAC', border: '3px solid #CC0080', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', color: '#3D0020', cursor: 'pointer', opacity: isPending ? 0.5 : 1 }}>↓ Lower</button>
           </div>
         </div>
       )}
 
       {phase === 'waiting' && (
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '12px' }}>⏳</div>
+          <div style={{ fontSize: '64px', fontWeight: 'bold', color: '#FFD700', marginBottom: '8px' }}>{countdown}</div>
           <div style={{ fontSize: '18px', color: '#C4A0FF' }}>Locked: {prediction === 'up' ? '↑ Higher' : '↓ Lower'}</div>
-          <div style={{ fontSize: '13px', color: '#9B30FF', marginTop: '8px' }}>Checking price in 10 minutes...</div>
+          <div style={{ fontSize: '13px', color: '#9B30FF', marginTop: '8px' }}>Tx sent to Base mainnet...</div>
         </div>
       )}
 
@@ -155,7 +172,7 @@ export default function Home() {
           <div style={{ fontSize: '60px', marginBottom: '8px' }}>{won ? '🎯' : '💥'}</div>
           <div style={{ fontSize: '26px', fontWeight: 'bold', color: won ? '#00FF87' : '#FF3CAC', marginBottom: '8px' }}>{won ? 'NAILED IT!' : 'REKT!'}</div>
           <div style={{ fontSize: '15px', color: '#C4A0FF', marginBottom: '4px' }}>{won ? '+' + earned + ' points' : 'No points this time'}</div>
-          <div style={{ fontSize: '13px', color: '#9B30FF', marginBottom: '16px' }}>Score saved on Base mainnet</div>
+          <div style={{ fontSize: '13px', color: '#00FF87', marginBottom: '16px' }}>Saved on Base mainnet</div>
           <button onClick={reset} style={{ padding: '14px 28px', background: '#FF3CAC', border: '3px solid #CC0080', borderRadius: '16px', fontSize: '15px', fontWeight: 'bold', color: 'white', cursor: 'pointer' }}>Pop again!</button>
         </div>
       )}
