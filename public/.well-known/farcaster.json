@@ -7,11 +7,15 @@
   "miniapp": {
     "version": "1",
     "name": "BasePump",
+    "subtitle": "ETH price prediction on Base",
+    "description": "Predict ETH price every 10 seconds. Win streaks, earn points, all on Base mainnet. Built for Farcaster.",
     "iconUrl": "https://basepump.vercel.app/og.png",
     "homeUrl": "https://basepump.vercel.app",
     "imageUrl": "https://basepump.vercel.app/og.png",
     "buttonTitle": "Play BasePump",
     "splashImageUrl": "https://basepump.vercel.app/og.png",
-    "splashBackgroundColor": "#1a0533"
+    "splashBackgroundColor": "#1a0533",
+    "primaryCategory": "games",
+    "tags": ["game", "base", "prediction", "eth", "defi"]
   }
 }

@@ -32,7 +32,7 @@ export default function Home() {
 
   useEffect(() => {
     import('@farcaster/miniapp-sdk').then(({ sdk }) => {
-      sdk.actions.ready()
+      sdk.actions.ready({ disableNativeGestures: false })
     })
     fetchPrice().then(p => setPrice(p))
   }, [])
