@@ -6,7 +6,7 @@ const URL = process.env.NEXT_PUBLIC_URL || 'https://basepump.vercel.app'
 export const metadata: Metadata = {
   title: 'BasePump',
   description: 'ETH Price Prediction Game on Base',
-  other: {
+  other: {'base:app_id': '69e11a955dd1d12bc976cdc7',
     'fc:frame': JSON.stringify({
       version: '1',
       imageUrl: `${URL}/og.png`,
