@@ -3,14 +3,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider, createConfig, http } from 'wagmi'
 import { base } from 'wagmi/chains'
-import { coinbaseWallet, injected } from 'wagmi/connectors'
+import { farcasterFrame } from '@farcaster/miniapp-wagmi-connector'
 import { type ReactNode } from 'react'
 
 const config = createConfig({
   chains: [base],
   connectors: [
-    coinbaseWallet({ appName: 'BasePump' }),
-    injected(),
+    farcasterFrame(),
   ],
   transports: {
     [base.id]: http('https://mainnet.base.org'),

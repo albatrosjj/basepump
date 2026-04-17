@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { coinbaseWallet } from 'wagmi/connectors'
+import { farcasterFrame } from '@farcaster/miniapp-wagmi-connector'
 
 export default function Home() {
   const { address, isConnected } = useAccount()
@@ -30,7 +30,7 @@ export default function Home() {
 
   function predict(dir: string) {
     if (!isConnected) {
-      connect({ connector: coinbaseWallet({ appName: 'BasePump' }) })
+      connect({ connector: farcasterFrame() })
       return
     }
     setPrediction(dir)
@@ -82,7 +82,7 @@ export default function Home() {
         </div>
       ) : (
         <button
-          onClick={() => connect({ connector: coinbaseWallet({ appName: 'BasePump' }) })}
+          onClick={() => connect({ connector: farcasterFrame() })}
           style={{ marginBottom: '16px', padding: '10px 24px', background: '#0052FF', border: 'none', borderRadius: '12px', color: 'white', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
         >
           Connect Wallet
