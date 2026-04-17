@@ -1,0 +1,17 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjMyOTEyMCwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDM5RWQxMTQ1RjIzREIyMDdBMUY5ODI5NTgxZTJiZTdERGRERjVhMzMifQ",
+    "payload": "eyJkb21haW4iOiJiYXNlcHVtcC52ZXJjZWwuYXBwIn0",
+    "signature": "k1YErtl6cvrCiIIRhtQyHBhRTx7yut88ONsh6MdEowRWNtFz2fAArMx8bC7MRC9JTviuO70766Cgtp4V2mf0yxs="
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "BasePump",
+    "iconUrl": "https://basepump.vercel.app/og.png",
+    "homeUrl": "https://basepump.vercel.app",
+    "imageUrl": "https://basepump.vercel.app/og.png",
+    "buttonTitle": "Play BasePump",
+    "splashImageUrl": "https://basepump.vercel.app/og.png",
+    "splashBackgroundColor": "#1a0533"
+  }
+}
