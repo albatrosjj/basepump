@@ -58,7 +58,7 @@ export default function Home() {
     setPriceAtPrediction(currentPrice)
     setPrediction(dir)
     setPhase('waiting')
-    setCountdown(5)
+    setCountdown(10)
 
     const priceWei = BigInt(Math.round(currentPrice * 100))
 
@@ -69,7 +69,7 @@ export default function Home() {
       args: [priceWei, dir === 'up'],
     })
 
-    let c = 5
+    let c = 10
     const timer = setInterval(() => {
       c--
       setCountdown(c)
@@ -94,8 +94,8 @@ export default function Home() {
       })
 
       setPhase('result')
-      setTimeout(() => refetch(), 3000)
-    }, 5000)
+      setTimeout(() => refetch(), 5000)
+    }, 10000)
   }
 
   function reset() {
@@ -150,7 +150,7 @@ export default function Home() {
       {phase === 'play' && (
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '15px', color: '#C4A0FF', marginBottom: '16px' }}>
-            {isConnected ? 'Where will ETH be in 5 seconds?' : 'Connect wallet to play'}
+            {isConnected ? 'Where will ETH be in 10 seconds?' : 'Connect wallet to play'}
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button onClick={() => predict('up')} disabled={isPending} style={{ padding: '16px 28px', background: '#00FF87', border: '3px solid #00CC6A', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', color: '#003D1F', cursor: 'pointer', opacity: isPending ? 0.5 : 1 }}>↑ Higher</button>
