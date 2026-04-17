@@ -1,76 +1,98 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useWriteContract, useReadContract } from 'wagmi'
 import { farcasterFrame } from '@farcaster/miniapp-wagmi-connector'
+import { SCOREBOARD_ADDRESS, SCOREBOARD_ABI } from '@/lib/contract'
 
 export default function Home() {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
   const { disconnect } = useDisconnect()
+  const { writeContract, isPending } = useWriteContract()
+
   const [price, setPrice] = useState(0)
-  const [change, setChange] = useState(0)
-  const [score, setScore] = useState(0)
-  const [streak, setStreak] = useState(0)
   const [phase, setPhase] = useState('play')
   const [prediction, setPrediction] = useState('')
   const [won, setWon] = useState(false)
   const [earned, setEarned] = useState(0)
-  const [sdkLoaded, setSdkLoaded] = useState(false)
+  const [priceAtPrediction, setPriceAtPrediction] = useState(0)
+
+  const { data: playerData } = useReadContract({
+    address: SCOREBOARD_ADDRESS,
+    abi: SCOREBOARD_ABI,
+    functionName: 'getPlayer',
+    args: [address as `0x${string}`],
+    query: { enabled: !!address },
+  })
+
+  const score = playerData ? Number(playerData[0]) : 0
+  const streak = playerData ? Number(playerData[1]) : 0
 
   useEffect(() => {
     import('@farcaster/miniapp-sdk').then(({ sdk }) => {
       sdk.actions.ready()
-      setSdkLoaded(true)
     })
-    fetch('https://api.coinbase.com/v2/prices/ETH-USD/spot')
-      .then(r => r.json())
-      .then(d => setPrice(parseFloat(d.data.amount)))
-      .catch(() => setPrice(3284))
+    fetchPrice().then(p => setPrice(p))
   }, [])
 
-  function predict(dir: string) {
+  async function fetchPrice(): Promise<number> {
+    try {
+      const r = await fetch('https://api.coinbase.com/v2/prices/ETH-USD/spot')
+      const d = await r.json()
+      return parseFloat(d.data.amount)
+    } catch {
+      return 3284
+    }
+  }
+
+  async function predict(dir: string) {
     if (!isConnected) {
       connect({ connector: farcasterFrame() })
       return
     }
     setPrediction(dir)
+    setPriceAtPrediction(price)
     setPhase('waiting')
-    setTimeout(() => {
-      fetch('https://api.coinbase.com/v2/prices/ETH-USD/spot')
-        .then(r => r.json())
-        .then(d => {
-          const newPrice = parseFloat(d.data.amount)
-          const w = dir === 'up' ? newPrice > price : newPrice < price
-          const pts = w ? 50 + streak * 10 : 0
-          setWon(w)
-          setEarned(pts)
-          setPrice(newPrice)
-          if (w) { setScore(s => s + pts); setStreak(s => s + 1) }
-          else setStreak(0)
-          setPhase('result')
+
+    setTimeout(async () => {
+      const newPrice = await fetchPrice()
+      setPrice(newPrice)
+      const w = dir === 'up' ? newPrice > priceAtPrediction : newPrice < priceAtPrediction
+
+      setWon(w)
+      const pts = w ? 50 + streak * 10 : 0
+      setEarned(pts)
+
+      if (w) {
+        writeContract({
+          address: SCOREBOARD_ADDRESS,
+          abi: SCOREBOARD_ABI,
+          functionName: 'recordWin',
+          args: [BigInt(streak)],
         })
-        .catch(() => {
-          const w = Math.random() > 0.4
-          const pts = w ? 50 + streak * 10 : 0
-          setWon(w)
-          setEarned(pts)
-          if (w) { setScore(s => s + pts); setStreak(s => s + 1) }
-          else setStreak(0)
-          setPhase('result')
+      } else {
+        writeContract({
+          address: SCOREBOARD_ADDRESS,
+          abi: SCOREBOARD_ABI,
+          functionName: 'recordLoss',
         })
+      }
+
+      setPhase('result')
     }, 10000)
   }
 
   function reset() {
     setPhase('play')
     setPrediction('')
+    fetchPrice().then(p => setPrice(p))
   }
 
   const short = address ? address.slice(0, 6) + '...' + address.slice(-4) : ''
 
   return (
     <main style={{ minHeight: '100vh', background: '#1a0533', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', padding: '20px' }}>
-      
+
       <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#FF3CAC', marginBottom: '4px' }}>BasePump</div>
       <div style={{ fontSize: '11px', color: '#9B30FF', marginBottom: '16px', letterSpacing: '0.1em' }}>ETH PREDICTION · BASE MAINNET</div>
 
@@ -114,8 +136,8 @@ export default function Home() {
             {isConnected ? 'Where will ETH be in 10 minutes?' : 'Connect wallet to play'}
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => predict('up')} style={{ padding: '16px 28px', background: '#00FF87', border: '3px solid #00CC6A', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', color: '#003D1F', cursor: 'pointer' }}>↑ Higher</button>
-            <button onClick={() => predict('down')} style={{ padding: '16px 28px', background: '#FF3CAC', border: '3px solid #CC0080', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', color: '#3D0020', cursor: 'pointer' }}>↓ Lower</button>
+            <button onClick={() => predict('up')} disabled={isPending} style={{ padding: '16px 28px', background: '#00FF87', border: '3px solid #00CC6A', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', color: '#003D1F', cursor: 'pointer' }}>↑ Higher</button>
+            <button onClick={() => predict('down')} disabled={isPending} style={{ padding: '16px 28px', background: '#FF3CAC', border: '3px solid #CC0080', borderRadius: '16px', fontSize: '18px', fontWeight: 'bold', color: '#3D0020', cursor: 'pointer' }}>↓ Lower</button>
           </div>
         </div>
       )}
@@ -132,7 +154,8 @@ export default function Home() {
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '60px', marginBottom: '8px' }}>{won ? '🎯' : '💥'}</div>
           <div style={{ fontSize: '26px', fontWeight: 'bold', color: won ? '#00FF87' : '#FF3CAC', marginBottom: '8px' }}>{won ? 'NAILED IT!' : 'REKT!'}</div>
-          <div style={{ fontSize: '15px', color: '#C4A0FF', marginBottom: '16px' }}>{won ? '+' + earned + ' points' : 'No points this time'}</div>
+          <div style={{ fontSize: '15px', color: '#C4A0FF', marginBottom: '4px' }}>{won ? '+' + earned + ' points' : 'No points this time'}</div>
+          <div style={{ fontSize: '13px', color: '#9B30FF', marginBottom: '16px' }}>Score saved on Base mainnet</div>
           <button onClick={reset} style={{ padding: '14px 28px', background: '#FF3CAC', border: '3px solid #CC0080', borderRadius: '16px', fontSize: '15px', fontWeight: 'bold', color: 'white', cursor: 'pointer' }}>Pop again!</button>
         </div>
       )}
